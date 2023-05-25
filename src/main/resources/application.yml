@@ -1,0 +1,10 @@
+server:
+  port: 9088
+
+openai:
+  key: xxxx
+  baseUrl: https://api.openai.com/
+  useProxy: true
+  proxyUrl: 127.0.0.1
+  proxyPort: 7890
+
