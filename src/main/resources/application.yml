@@ -11,4 +11,5 @@ openai:
 cloud:
   mongodb:
     url: xx
+    dbName: xx
 

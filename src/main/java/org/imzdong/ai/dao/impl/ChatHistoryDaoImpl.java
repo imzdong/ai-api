@@ -24,9 +24,9 @@ public class ChatHistoryDaoImpl implements ChatHistoryDao {
     @Override
     public Chat addChat(ChatRequest request) {
         Chat chat = Chat.builder()
-                .name(request.getChatName())
+                .name(request.getChatRoomName())
                 .userId(request.getUserId())
-                .id(UUID.randomUUID().toString())
+                .id(request.getChatRoomId())
                 .model(request.getModel())
                 .createdDate(new Date())
                 .build();

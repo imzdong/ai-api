@@ -5,7 +5,8 @@ import lombok.Data;
 @Data
 public class ChatRequest {
 
-    private String chatName;
+    private String chatRoomName;
+    private String chatRoomId;
     private String userId;
     private String model;
 
