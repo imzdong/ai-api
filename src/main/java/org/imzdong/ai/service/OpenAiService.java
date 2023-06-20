@@ -5,11 +5,14 @@ import org.imzdong.ai.model.Chat;
 import org.imzdong.ai.model.ChatMessageHistory;
 import org.imzdong.ai.model.req.ChatMessageRequest;
 import org.imzdong.ai.model.req.ChatRequest;
+import org.imzdong.ai.model.res.ChatMessagesResponse;
+import org.imzdong.ai.model.res.ChatResponse;
 import org.imzdong.ai.openai.api.OpenAiApi;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionChoice;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionRequest;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionResult;
 import org.imzdong.ai.openai.model.completion.chat.ChatMessage;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -27,6 +30,10 @@ public class OpenAiService {
 
     public Chat addChat(ChatRequest request){
         return chatHistoryDao.addChat(request);
+    }
+
+    public List<Chat> listChat(String userId){
+        return chatHistoryDao.listChatByUserId(userId);
     }
 
     public ChatCompletionResult chat(ChatMessageRequest request){
@@ -80,4 +87,17 @@ public class OpenAiService {
         return chatCompletion;
     }
 
+    public ChatResponse getChatMessage(String chatId) {
+        ChatResponse chatResponse = new ChatResponse();
+        Chat byChatId = chatHistoryDao.findByChatId(chatId);
+        BeanUtils.copyProperties(byChatId, chatResponse);
+        List<ChatMessageHistory> messagesByChatId = chatHistoryDao.findMessagesByChatId(chatId);
+        List<ChatMessagesResponse> list = messagesByChatId.stream().map(m -> {
+            ChatMessagesResponse response = new ChatMessagesResponse();
+            BeanUtils.copyProperties(m, response);
+            return response;
+        }).toList();
+        chatResponse.setMessages(list);
+        return chatResponse;
+    }
 }

@@ -13,4 +13,5 @@ public interface ChatHistoryDao {
     ChatMessageHistory addChatMessage(ChatMessageRequest request);
     List<ChatMessageHistory> findMessagesByChatId(String chatId);
     Chat findByChatId(String chatId);
+    List<Chat> listChatByUserId(String userId);
 }

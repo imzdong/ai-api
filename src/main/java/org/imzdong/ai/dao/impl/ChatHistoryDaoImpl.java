@@ -34,6 +34,19 @@ public class ChatHistoryDaoImpl implements ChatHistoryDao {
     }
 
     @Override
+    public List<Chat> listChatByUserId(String userId) {
+
+        // 创建条件对象
+        Criteria criteria = Criteria.where("userId").is(userId);
+        // 创建查询对象，然后将条件对象添加到其中，然后根据指定字段进行排序
+        Query query = new Query(criteria).with(Sort.by("num"));
+        // 执行查询
+        List<Chat> list = mongoTemplate.find(query, Chat.class, COLLECTION_NAME);
+        // 输出结果
+        return list;
+    }
+
+    @Override
     public ChatMessageHistory addChatMessage(ChatMessageRequest request) {
         ChatMessageHistory messageHistory = ChatMessageHistory.builder()
                 .id(UUID.randomUUID().toString())
