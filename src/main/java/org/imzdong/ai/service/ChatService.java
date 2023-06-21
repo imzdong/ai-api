@@ -70,6 +70,7 @@ public class ChatService {
         if(CollectionUtils.isEmpty(messages)){
             messages.add(new ChatMessage(ROLE_SYSTEM, SYSTEM_ASSISTANT_MSG));
             saveDbMsg(chatId, SYSTEM_ASSISTANT_MSG, ROLE_SYSTEM, null, BOT_NAME);
+            chatMessagesMap.put(chatId, messages);
         }
         //'system', 'user', or 'assistant'
         String msg = request.getMessage();
@@ -77,7 +78,9 @@ public class ChatService {
         messages.add(new ChatMessage(ROLE_USER, msg));
         ChatCompletionResult userResponse = sendOpenAiMsg(chatId, messages);
         ChatMessage message = userResponse.getChoices().get(0).getMessage();
-        ChatMessagesResponse response = saveDbMsg(chatId, message.getContent(), message.getRole(), null, BOT_NAME);
+        String botMsg = message.getContent();
+        messages.add(new ChatMessage(message.getRole(), botMsg));
+        ChatMessagesResponse response = saveDbMsg(chatId, botMsg, message.getRole(), null, BOT_NAME);
 
         Usage usage = userResponse.getUsage();
         long totalTokens = usage.getTotalTokens();
