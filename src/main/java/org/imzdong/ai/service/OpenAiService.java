@@ -1,8 +1,10 @@
 package org.imzdong.ai.service;
 
-import org.imzdong.ai.dao.ChatHistoryDao;
+import org.imzdong.ai.dao.ChatMessageDao;
+import org.imzdong.ai.dao.UserDao;
 import org.imzdong.ai.model.Chat;
-import org.imzdong.ai.model.ChatMessageHistory;
+import org.imzdong.ai.model.ChatMessage;
+import org.imzdong.ai.model.User;
 import org.imzdong.ai.model.req.ChatMessageRequest;
 import org.imzdong.ai.model.req.ChatRequest;
 import org.imzdong.ai.model.res.ChatMessagesResponse;
@@ -11,7 +13,6 @@ import org.imzdong.ai.openai.api.OpenAiApi;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionChoice;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionRequest;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionResult;
-import org.imzdong.ai.openai.model.completion.chat.ChatMessage;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,30 +27,37 @@ public class OpenAiService {
     @Autowired
     private OpenAiApi openAiApi;
     @Autowired
-    private ChatHistoryDao chatHistoryDao;
+    private UserDao userDao;
+    @Autowired
+    private ChatMessageDao chatMessageDao;
 
     public Chat addChat(ChatRequest request){
-        return chatHistoryDao.addChat(request);
+        User byUserId = userDao.findByUserId(request.getUserId());
+        User bot = userDao.findByUserName("OpenAI");
+        request.setUserName(byUserId.getName());
+        request.setBotUserId(bot.getId());
+        request.setBotName(bot.getName());
+        return chatMessageDao.addChat(request);
     }
 
     public List<Chat> listChat(String userId){
-        return chatHistoryDao.listChatByUserId(userId);
+        return chatMessageDao.listChatByUserId(userId);
     }
 
     public ChatCompletionResult chat(ChatMessageRequest request){
-        List<ChatMessage> messages = new ArrayList<>();
+        List<org.imzdong.ai.openai.model.completion.chat.ChatMessage> messages = new ArrayList<>();
         String chatId = request.getChatId();
-        List<ChatMessageHistory> byChatId = chatHistoryDao.findMessagesByChatId(chatId);
+        List<ChatMessage> byChatId = chatMessageDao.findMessagesByChatId(chatId);
         if(!CollectionUtils.isEmpty(byChatId)){
             messages.addAll(byChatId.stream().map(m->{
-                ChatMessage chatMessage = new ChatMessage();
+                org.imzdong.ai.openai.model.completion.chat.ChatMessage chatMessage = new org.imzdong.ai.openai.model.completion.chat.ChatMessage();
                 chatMessage.setContent(m.getContent());
                 //'system', 'user', or 'assistant'
                 chatMessage.setRole((m.getUserName().equals("chat-gpt")?"assistant":"user"));
                 return chatMessage;
             }).toList());
             if(byChatId.size()>5){
-                messages.add(new ChatMessage("user","简要总结下你和用户的对话，用作后续的上下文提示prompt，控制在200字以内"));
+                messages.add(new org.imzdong.ai.openai.model.completion.chat.ChatMessage("user","简要总结下你和用户的对话，用作后续的上下文提示prompt，控制在200字以内"));
                 ChatCompletionRequest zj = ChatCompletionRequest.builder()
                         .model(request.getModel())
                         .messages(messages)
@@ -60,14 +68,14 @@ public class OpenAiService {
                 ChatCompletionResult zjResult = openAiApi.createChatCompletion(zj);
                 messages = new ArrayList<>();
                 ChatCompletionChoice choice = zjResult.getChoices().get(0);
-                messages.add(new ChatMessage("user",choice.getMessage().getContent()+"。"+ request.getMessage()));
+                messages.add(new org.imzdong.ai.openai.model.completion.chat.ChatMessage("user",choice.getMessage().getContent()+"。"+ request.getMessage()));
             }else {
-                messages.add(new ChatMessage("user", request.getMessage()));
+                messages.add(new org.imzdong.ai.openai.model.completion.chat.ChatMessage("user", request.getMessage()));
             }
         }else {
-            messages.add(new ChatMessage("user", request.getMessage()));
+            messages.add(new org.imzdong.ai.openai.model.completion.chat.ChatMessage("user", request.getMessage()));
         }
-        chatHistoryDao.addChatMessage(request);
+        chatMessageDao.addChatMessage(request);
         ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
                 .model(request.getModel())
                 .messages(messages)
@@ -75,7 +83,7 @@ public class OpenAiService {
                 .temperature(0.2)
                 .build();
         ChatCompletionResult chatCompletion = openAiApi.createChatCompletion(completionRequest);
-        ChatMessage message = chatCompletion.getChoices().get(0).getMessage();
+        org.imzdong.ai.openai.model.completion.chat.ChatMessage message = chatCompletion.getChoices().get(0).getMessage();
         ChatMessageRequest gptRequest = ChatMessageRequest.builder()
                 .message(message.getContent())
                 .model(request.getModel())
@@ -83,15 +91,15 @@ public class OpenAiService {
                 .chatId(request.getChatId())
                 .userId("openai-" + request.getModel())
                 .userName("chat-gpt").build();
-        chatHistoryDao.addChatMessage(gptRequest);
+        chatMessageDao.addChatMessage(gptRequest);
         return chatCompletion;
     }
 
     public ChatResponse getChatMessage(String chatId) {
         ChatResponse chatResponse = new ChatResponse();
-        Chat byChatId = chatHistoryDao.findByChatId(chatId);
+        Chat byChatId = chatMessageDao.findByChatId(chatId);
         BeanUtils.copyProperties(byChatId, chatResponse);
-        List<ChatMessageHistory> messagesByChatId = chatHistoryDao.findMessagesByChatId(chatId);
+        List<ChatMessage> messagesByChatId = chatMessageDao.findMessagesByChatId(chatId);
         List<ChatMessagesResponse> list = messagesByChatId.stream().map(m -> {
             ChatMessagesResponse response = new ChatMessagesResponse();
             BeanUtils.copyProperties(m, response);

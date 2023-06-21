@@ -10,4 +10,8 @@ public class ChatRequest {
     private String userId;
     private String model;
 
+    private String userName;
+    private String botUserId;
+    private String botName;
+
 }

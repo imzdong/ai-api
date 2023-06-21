@@ -1,9 +1,9 @@
 package org.imzdong.ai.dao.impl;
 
 import jakarta.annotation.Resource;
-import org.imzdong.ai.dao.ChatHistoryDao;
+import org.imzdong.ai.dao.ChatMessageDao;
 import org.imzdong.ai.model.Chat;
-import org.imzdong.ai.model.ChatMessageHistory;
+import org.imzdong.ai.model.ChatMessage;
 import org.imzdong.ai.model.req.ChatMessageRequest;
 import org.imzdong.ai.model.req.ChatRequest;
 import org.springframework.data.domain.Sort;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Repository;
 import java.util.*;
 
 @Repository
-public class ChatHistoryDaoImpl implements ChatHistoryDao {
+public class ChatMessageDaoImpl implements ChatMessageDao {
 
     private static final String COLLECTION_NAME = "chat";
     @Resource
@@ -24,9 +24,12 @@ public class ChatHistoryDaoImpl implements ChatHistoryDao {
     @Override
     public Chat addChat(ChatRequest request) {
         Chat chat = Chat.builder()
+                .id(request.getChatRoomId())
                 .name(request.getChatRoomName())
                 .userId(request.getUserId())
-                .id(request.getChatRoomId())
+                .userName(request.getUserName())
+                .botUserId(request.getBotUserId())
+                .botName(request.getBotName())
                 .model(request.getModel())
                 .createdDate(new Date())
                 .build();
@@ -47,8 +50,8 @@ public class ChatHistoryDaoImpl implements ChatHistoryDao {
     }
 
     @Override
-    public ChatMessageHistory addChatMessage(ChatMessageRequest request) {
-        ChatMessageHistory messageHistory = ChatMessageHistory.builder()
+    public ChatMessage addChatMessage(ChatMessageRequest request) {
+        ChatMessage messageHistory = ChatMessage.builder()
                 .id(UUID.randomUUID().toString())
                 .chatId(request.getChatId())
                 .createdDate(new Date())
@@ -66,14 +69,14 @@ public class ChatHistoryDaoImpl implements ChatHistoryDao {
      * @return 文档信息
      */
     @Override
-    public List<ChatMessageHistory> findMessagesByChatId(String chatId) {
+    public List<ChatMessage> findMessagesByChatId(String chatId) {
 
         // 创建条件对象
         Criteria criteria = Criteria.where("chatId").is(chatId);
         // 创建查询对象，然后将条件对象添加到其中，然后根据指定字段进行排序
         Query query = new Query(criteria).with(Sort.by("num"));
         // 执行查询
-        List<ChatMessageHistory> list = mongoTemplate.find(query, ChatMessageHistory.class, COLLECTION_NAME);
+        List<ChatMessage> list = mongoTemplate.find(query, ChatMessage.class, COLLECTION_NAME);
         // 输出结果
         return list;
     }

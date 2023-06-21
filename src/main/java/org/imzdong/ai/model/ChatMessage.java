@@ -9,7 +9,7 @@ import java.util.Date;
 
 @Data
 @Builder
-public class ChatMessageHistory {
+public class ChatMessage {
 
     @MongoId
     private String id;
