@@ -13,3 +13,6 @@ cloud:
     url: xx
     dbName: xx
 
+logging:
+  level:
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG

@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/ai")
-public class LoginController {
+public class UserController {
 
     @Autowired
     private UserService userService;
@@ -16,6 +16,11 @@ public class LoginController {
     @PostMapping(path = "/user")
     public User initUser(@RequestBody UserRequest request){
         return userService.addUser(request);
+    }
+
+    @DeleteMapping(path = "/user/{userId}")
+    public Boolean delUser(@PathVariable String userId){
+        return userService.delUser(userId);
     }
 
 }

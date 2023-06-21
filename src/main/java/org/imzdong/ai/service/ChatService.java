@@ -12,14 +12,12 @@ import org.imzdong.ai.model.req.ChatRequest;
 import org.imzdong.ai.model.res.ChatMessagesResponse;
 import org.imzdong.ai.model.res.ChatResponse;
 import org.imzdong.ai.openai.api.OpenAiApi;
-import org.imzdong.ai.openai.model.completion.chat.ChatCompletionChoice;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionRequest;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionResult;
 import org.imzdong.ai.openai.model.completion.chat.ChatMessage;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
@@ -57,7 +55,7 @@ public class ChatService {
     }
 
     public List<Chat> listChat(String userId){
-        return chatMessageDao.listChatByUserId(userId);
+        return chatMessageDao.findChatByUserId(userId);
     }
 
     private String ROLE_SYSTEM = "system";

@@ -13,7 +13,7 @@ public interface ChatMessageDao {
     ChatBotMessage addChatMessage(ChatMessageDto dto);
     List<ChatBotMessage> findMessagesByChatId(String chatId);
     Chat findByChatId(String chatId);
-    List<Chat> listChatByUserId(String userId);
+    List<Chat> findChatByUserId(String userId);
     Boolean delChat(String chatId);
 
 }

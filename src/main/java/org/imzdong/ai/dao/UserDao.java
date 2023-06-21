@@ -11,4 +11,6 @@ public interface UserDao {
     User findByUserId(String userId);
 
     User findByUserName(String userName);
+
+    Boolean delUser(String userId);
 }

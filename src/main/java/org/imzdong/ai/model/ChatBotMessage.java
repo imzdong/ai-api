@@ -23,5 +23,4 @@ public class ChatBotMessage {
     private Date createdDate;
     private Boolean delFlag;
 
-
 }
