@@ -12,18 +12,17 @@ import org.imzdong.ai.model.req.ChatRequest;
 import org.imzdong.ai.model.res.ChatMessagesResponse;
 import org.imzdong.ai.model.res.ChatResponse;
 import org.imzdong.ai.openai.api.OpenAiApi;
+import org.imzdong.ai.openai.model.Usage;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionRequest;
 import org.imzdong.ai.openai.model.completion.chat.ChatCompletionResult;
 import org.imzdong.ai.openai.model.completion.chat.ChatMessage;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -40,6 +39,13 @@ public class ChatService {
     private Map<String,User> nameAndUsers = new HashMap<>();
     private Map<String,List<ChatMessage>> chatMessagesMap = new HashMap<>();
     private Map<String, Chat> chatMap = new HashMap<>();
+    private long MAX_TOKEN = 3072L;
+    private String ROLE_SYSTEM = "system";
+    private String ROLE_USER = "user";
+    private String ROLE_ASSISTANT = "assistant";
+    private String BOT_NAME = "OpenAI";
+    private String SYSTEM_ASSISTANT_MSG = "You are a helpful assistant.";
+    private String SYSTEM_SUMMARIZED_MSG = "请总结一下上面User和Assistant聊了些什么:";
 
     public Chat addChat(ChatRequest request){
         User byUserId = userDao.findByUserId(request.getUserId());
@@ -58,21 +64,44 @@ public class ChatService {
         return chatMessageDao.findChatByUserId(userId);
     }
 
-    private String ROLE_SYSTEM = "system";
-    private String ROLE_USER = "user";
-    private String ROLE_ASSISTANT = "assistant";
-    private String BOT_NAME = "OpenAI";
-
     public ChatMessagesResponse chat(String chatId,
                                      ChatMessageRequest request){
         List<ChatMessage> messages = chatMessagesMap.getOrDefault(chatId, new ArrayList<>());
+        if(CollectionUtils.isEmpty(messages)){
+            messages.add(new ChatMessage(ROLE_SYSTEM, SYSTEM_ASSISTANT_MSG));
+            saveDbMsg(chatId, SYSTEM_ASSISTANT_MSG, ROLE_SYSTEM, null, BOT_NAME);
+        }
         //'system', 'user', or 'assistant'
         String msg = request.getMessage();
         saveDbMsg(chatId, msg, ROLE_USER, request.getUserId(), null);
-
-        Chat cachChat = getCachChat(chatId);
-
         messages.add(new ChatMessage(ROLE_USER, msg));
+        ChatCompletionResult userResponse = sendOpenAiMsg(chatId, messages);
+        ChatMessage message = userResponse.getChoices().get(0).getMessage();
+        ChatMessagesResponse response = saveDbMsg(chatId, message.getContent(), message.getRole(), null, BOT_NAME);
+
+        Usage usage = userResponse.getUsage();
+        long totalTokens = usage.getTotalTokens();
+        if(totalTokens > MAX_TOKEN){
+            messages.add(new ChatMessage(ROLE_SYSTEM, SYSTEM_SUMMARIZED_MSG));
+            saveDbMsg(chatId, SYSTEM_SUMMARIZED_MSG, ROLE_SYSTEM, null, BOT_NAME);
+            ChatCompletionResult summarizedResult = sendOpenAiMsg(chatId, messages);
+            ChatMessage summarizedMessage = summarizedResult.getChoices().get(0).getMessage();
+            String content = summarizedMessage.getContent();
+            saveDbMsg(chatId, content, ROLE_SYSTEM, null, BOT_NAME);
+            chatMessagesMap.remove(chatId);
+            List<ChatMessage> newMessages = new ArrayList<>();
+            chatMessagesMap.put(chatId, newMessages);
+            newMessages.add(new ChatMessage(ROLE_SYSTEM, SYSTEM_ASSISTANT_MSG));
+            saveDbMsg(chatId, SYSTEM_ASSISTANT_MSG, ROLE_SYSTEM, null, BOT_NAME);
+            newMessages.add(new ChatMessage(ROLE_SYSTEM, content));
+            saveDbMsg(chatId, content, ROLE_SYSTEM, null, BOT_NAME);
+
+        }
+        return response;
+    }
+
+    private ChatCompletionResult sendOpenAiMsg(String chatId, List<ChatMessage> messages) {
+        Chat cachChat = getCachChat(chatId);
         ChatCompletionRequest userRequest = ChatCompletionRequest.builder()
                 .model(cachChat.getModel())
                 .messages(messages)
@@ -80,12 +109,7 @@ public class ChatService {
                 .temperature(0.2)
                 .n(1)
                 .build();
-
-        ChatCompletionResult userResponse = openAiApi.createChatCompletion(userRequest);
-        ChatMessage message = userResponse.getChoices().get(0).getMessage();
-        ChatMessagesResponse response = saveDbMsg(chatId, message.getContent(), message.getRole(), null, BOT_NAME);
-
-        return response;
+        return openAiApi.createChatCompletion(userRequest);
     }
 
     private ChatMessagesResponse saveDbMsg(String chatId, String msg,
@@ -148,11 +172,14 @@ public class ChatService {
         Chat byChatId = chatMessageDao.findByChatId(chatId);
         BeanUtils.copyProperties(byChatId, chatResponse);
         List<ChatBotMessage> messagesByChatId = chatMessageDao.findMessagesByChatId(chatId);
-        List<ChatMessagesResponse> list = messagesByChatId.stream().map(m -> {
-            ChatMessagesResponse response = new ChatMessagesResponse();
-            BeanUtils.copyProperties(m, response);
-            return response;
-        }).toList();
+        List<String> roles = Arrays.asList(ROLE_USER, ROLE_ASSISTANT);
+        List<ChatMessagesResponse> list = messagesByChatId.stream()
+                .filter(m->roles.contains(m.getRole()))
+                .map(m -> {
+                    ChatMessagesResponse response = new ChatMessagesResponse();
+                    BeanUtils.copyProperties(m, response);
+                    return response;
+                }).toList();
         chatResponse.setMessages(list);
         return chatResponse;
     }
