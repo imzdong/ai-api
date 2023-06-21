@@ -9,7 +9,7 @@ import java.util.Date;
 
 @Data
 @Builder
-public class ChatMessage {
+public class ChatBotMessage {
 
     @MongoId
     private String id;
@@ -17,9 +17,11 @@ public class ChatMessage {
     private String userName;
     private String userId;
     private String content;
-    private Integer num;
+    private String role;//system', 'user', or 'assistant
+    private Long num;
     @JsonFormat( pattern ="yyyy-MM-dd HH:mm:ss", timezone ="GMT+8")
     private Date createdDate;
+    private Boolean delFlag;
 
 
 }

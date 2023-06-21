@@ -14,6 +14,4 @@ public class ChatMessagesResponse {
     private String content;
     private Date createdDate;
 
-
-
 }

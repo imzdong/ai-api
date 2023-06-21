@@ -1,15 +1,17 @@
 package org.imzdong.ai.dao.impl;
 
+import com.mongodb.client.result.UpdateResult;
 import jakarta.annotation.Resource;
 import org.imzdong.ai.dao.ChatMessageDao;
 import org.imzdong.ai.model.Chat;
-import org.imzdong.ai.model.ChatMessage;
-import org.imzdong.ai.model.req.ChatMessageRequest;
+import org.imzdong.ai.model.ChatBotMessage;
+import org.imzdong.ai.model.dto.ChatMessageDto;
 import org.imzdong.ai.model.req.ChatRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
@@ -32,6 +34,7 @@ public class ChatMessageDaoImpl implements ChatMessageDao {
                 .botName(request.getBotName())
                 .model(request.getModel())
                 .createdDate(new Date())
+                .delFlag(false)
                 .build();
         return mongoTemplate.insert(chat, COLLECTION_NAME);
     }
@@ -41,8 +44,9 @@ public class ChatMessageDaoImpl implements ChatMessageDao {
 
         // 创建条件对象
         Criteria criteria = Criteria.where("userId").is(userId);
+        Criteria delCri = Criteria.where("delFlag").is(false);
         // 创建查询对象，然后将条件对象添加到其中，然后根据指定字段进行排序
-        Query query = new Query(criteria).with(Sort.by("num"));
+        Query query = new Query(criteria).addCriteria(delCri).with(Sort.by("num"));
         // 执行查询
         List<Chat> list = mongoTemplate.find(query, Chat.class, COLLECTION_NAME);
         // 输出结果
@@ -50,15 +54,31 @@ public class ChatMessageDaoImpl implements ChatMessageDao {
     }
 
     @Override
-    public ChatMessage addChatMessage(ChatMessageRequest request) {
-        ChatMessage messageHistory = ChatMessage.builder()
+    public Boolean delChat(String chatId) {
+        Query query = new Query(Criteria.where("id").is(chatId));
+        Update update = new Update().set("delFlag", true);
+        UpdateResult updateResult = mongoTemplate.updateFirst(query, update, Chat.class);
+        if(updateResult.getMatchedCount()==1){
+            Query queryMsg = new Query(Criteria.where("chatId").is(chatId));
+            Update updateMsg = new Update().set("delFlag", true);
+            UpdateResult result = mongoTemplate.updateFirst(queryMsg, updateMsg, ChatBotMessage.class);
+            return result.getModifiedCount() > 0;
+        }
+        return updateResult.getMatchedCount() == 1;
+    }
+
+    @Override
+    public ChatBotMessage addChatMessage(ChatMessageDto dto) {
+        ChatBotMessage messageHistory = ChatBotMessage.builder()
                 .id(UUID.randomUUID().toString())
-                .chatId(request.getChatId())
+                .chatId(dto.getChatId())
                 .createdDate(new Date())
-                .content(request.getMessage())
-                .userId(request.getUserId())
-                .userName(request.getUserName())
-                .num(request.getNum())
+                .content(dto.getMessage())
+                .userId(dto.getUserId())
+                .userName(dto.getUserName())
+                .role(dto.getRole())
+                .num(System.currentTimeMillis())
+                .delFlag(false)
                 .build();
         return mongoTemplate.insert(messageHistory, COLLECTION_NAME);
     }
@@ -69,14 +89,15 @@ public class ChatMessageDaoImpl implements ChatMessageDao {
      * @return 文档信息
      */
     @Override
-    public List<ChatMessage> findMessagesByChatId(String chatId) {
+    public List<ChatBotMessage> findMessagesByChatId(String chatId) {
 
         // 创建条件对象
         Criteria criteria = Criteria.where("chatId").is(chatId);
+        Criteria delCri = Criteria.where("delFlag").is(false);
         // 创建查询对象，然后将条件对象添加到其中，然后根据指定字段进行排序
-        Query query = new Query(criteria).with(Sort.by("num"));
+        Query query = new Query(criteria).addCriteria(delCri).with(Sort.by("num"));
         // 执行查询
-        List<ChatMessage> list = mongoTemplate.find(query, ChatMessage.class, COLLECTION_NAME);
+        List<ChatBotMessage> list = mongoTemplate.find(query, ChatBotMessage.class, COLLECTION_NAME);
         // 输出结果
         return list;
     }

@@ -12,6 +12,9 @@ public class ChatResponse {
     private String name;
     private String model;
     private String userId;
+    private String userName;
+    private String botUserId;
+    private String botName;
     private Date createdDate;
 
     private List<ChatMessagesResponse> messages;
