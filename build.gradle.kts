@@ -29,6 +29,8 @@ dependencies {
     //api 'io.github.openfeign:feign-core:12.2'
     implementation("io.github.openfeign:feign-okhttp:12.2")
     implementation("io.github.openfeign:feign-jackson:12.2")
+    // 计算token https://github.com/knuddelsgmbh/jtokkit
+    implementation("com.knuddels:jtokkit:0.5.1")
 
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
